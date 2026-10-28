@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2675f5">
+<title>Мои дела</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f2f6fc;color:#202b40;font-family:Arial,sans-serif}
+header{background:#2675f5;color:white;padding:26px 20px 32px;border-radius:0 0 25px 25px}
+h1{margin:0 0 8px;font-size:28px}
+header p{margin:0;opacity:.9}
+main{max-width:600px;margin:auto;padding:18px}
+.card{background:white;padding:17px;border-radius:18px;margin-bottom:15px;box-shadow:0 3px 14px #243b5b0b}
+input,button{font:inherit}
+input{width:100%;padding:13px;border:1px solid #dce3ef;border-radius:11px;margin:6px 0 12px;background:white}
+button{border:0;border-radius:11px;padding:13px;background:#2675f5;color:white;font-weight:bold;cursor:pointer}
+.primary{width:100%}
+.task{display:flex;gap:11px;align-items:flex-start;border-bottom:1px solid #edf0f5;padding:13px 0}
+.task:last-child{border:0}
+.task input{width:20px;margin:3px 0}
+.taskname{flex:1;overflow-wrap:anywhere}
+.task small{display:block;color:#738097;margin-top:6px}
+.done{text-decoration:line-through;opacity:.5}
+.del{background:#fff0f0;color:#d33;padding:8px 10px}
+h2{font-size:19px;margin:0 0 12px}
+.empty{text-align:center;color:#8994a8;padding:20px}
+</style>
+</head>
+<body>
+<header>
+<h1>🔔 Мои дела</h1>
+<p>Не забывай о важном!</p>
+</header>
+<main>
+<section class="card">
+<h2>➕ Новая задача</h2>
+<form id="form">
+<label for="name">Что нужно сделать?</label>
+<input id="name" placeholder="Например, купить продукты" required>
+<label for="when">Дата и время напоминания</label>
+<input id="when" type="datetime-local" required>
+<button class="primary">Добавить задачу</button>
+</form>
+</section>
+<section class="card">
+<h2>📋 Мой список</h2>
+<div id="tasks"></div>
+</section>
+<section class="card">
+<button id="notify" class="primary">🔔 Включить уведомления</button>
+<p style="font-size:12px;color:#738097">Оставь приложение открытым, чтобы оно проверяло наступление времени задач.</p>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let tasks=[];
+try{tasks=JSON.parse(localStorage.getItem('myTasks')||'[]')}catch(e){}
+function save(){localStorage.setItem('myTasks',JSON.stringify(tasks));render()}
+function render(){
+$('tasks').innerHTML='';
+if(!tasks.length){$('tasks').innerHTML='<div class="empty">Пока нет задач 😊</div>';return}
+tasks.forEach(t=>{
+const row=document.createElement('div');row.className='task';
+const check=document.createElement('input');check.type='checkbox';check.checked=t.done;
+check.onchange=()=>{t.done=check.checked;save()};
+const info=document.createElement('div');info.className='taskname'+(t.done?' done':'');
+const title=document.createElement('strong');title.textContent=t.name;
+const date=document.createElement('small');date.textContent=new Date(t.when).toLocaleString('ru-RU');
+info.append(title,date);
+const del=document.createElement('button');del.className='del';del.textContent='✕';
+del.onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id);save()};
+row.append(check,info,del);$('tasks').append(row);
+});
+}
+$('form').onsubmit=e=>{
+e.preventDefault();
+tasks.push({id:Date.now(),name:$('name').value.trim(),when:new Date($('when').value).getTime(),done:false,alerted:false});
+save();e.target.reset();
+};
+$('notify').onclick=async()=>{
+if(!('Notification' in window)){alert('Уведомления не поддерживаются этим браузером.');return}
+const result=await Notification.requestPermission();
+alert(result==='granted'?'Уведомления разрешены. Оставь приложение открытым.':'Разреши уведомления в настройках браузера.');
+};
+setInterval(()=>{
+if(!('Notification' in window)||Notification.permission!=='granted')return;
+const now=Date.now();
+tasks.forEach(t=>{
+if(!t.done&&!t.alerted&&t.when<=now){
+new Notification('🔔 Мои дела',{body:t.name});
+t.alerted=true;localStorage.setItem('myTasks',JSON.stringify(tasks));
+}
+});
+},15000);
+render();
+</script>
+</body>
+</html>
